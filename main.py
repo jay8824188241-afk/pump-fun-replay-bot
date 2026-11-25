@@ -46,16 +46,16 @@ import makefun_bot  # noqa: E402  (after the sys.path line: -P leaves the script
 # --- fixed strategy constants (all in lamports / slots / ratios) -------------
 STAKE_LAMPORTS = 40_000_000          # 0.04 SOL per coin
 MIN_BUY_LAMPORTS = 10_000_000        # 0.01 SOL: the competition's round-trip bar
-MAX_SLIPPAGE_BPS = 500               # 5% worst-case fill slippage
+MAX_SLIPPAGE_BPS = 300               # 3% worst-case fill slippage
 
 MIN_TRADES = 10                      # trades seen before a coin may be bought
 MIN_BUY_FLOW_LAMPORTS = 1000000000   # 1.00 SOL of buy flow before entry
-MOMENTUM_RATIO = 1.15                # price must be +15% over its first trade
+MOMENTUM_RATIO = 1.20                # price must be +20% over its first trade
 MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
-MAX_HOLD_SLOTS = 6000                # flat any position older than ~40 min
+MAX_HOLD_SLOTS = 4500                # flat any position older than ~30 min
 
 TAKE_PROFIT_RATIO = 1.60             # +60% over filled cost basis
-MIN_RISE_STREAK = 3                  # consecutive rising trade prints at entry
+MIN_RISE_STREAK = 4                  # consecutive rising trade prints at entry
 PEAK_HOLD_RATIO = 0.97               # entry only within 3% of the tape peak
 STOP_LOSS_RATIO = 0.92               # -8% under filled cost basis
 TRAIL_ARM_RATIO = 1.15               # trailing stop arms once +15%
