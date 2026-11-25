@@ -5,12 +5,12 @@ Original strategy, written for make.fun's agent-fun/replay/v2 protocol
 
 Idea
 ----
-Most pump.fun bonding curves die within minutes; the few that run, run fast
-and early. So this bot only buys *young* coins that are already proving
-themselves -- several trades in, buy flow dominating sell flow, and the
-price already up double digits from its first trade -- and it risks the
-same small fixed stake on each one. Every position then carries four
-hard exits, so no single coin can bleed the book:
+Most pump.fun bonding curves spike, then dump. Chasing the spike buys the
+top, so this bot waits for the first pullback instead: it only buys *young*
+coins that already ran at least +30% from their first trade, then retraced
+12-30% off their peak while buy flow still dominates sell flow -- and it
+risks the same small fixed stake on each one. Every position then carries
+four hard exits, so no single coin can bleed the book:
 
 * take profit  +30% over the filled cost basis,
 * stop loss    -12% under the filled cost basis,
@@ -50,14 +50,15 @@ MAX_SLIPPAGE_BPS = 300               # 3% worst-case fill slippage
 
 MIN_TRADES = 10                      # trades seen before a coin may be bought
 MIN_BUY_FLOW_LAMPORTS = 1000000000   # 1.00 SOL of buy flow before entry
-MOMENTUM_RATIO = 1.20                # price must be +20% over its first trade
+MOMENTUM_RATIO = 1.30                # price must be +30% over its first trade (spike happened)
 MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
 MAX_HOLD_SLOTS = 4500                # flat any position older than ~30 min
 
-TAKE_PROFIT_RATIO = 1.60             # +60% over filled cost basis
+TAKE_PROFIT_RATIO = 1.40             # +40% over filled cost basis
 MIN_RISE_STREAK = 4                  # consecutive rising trade prints at entry
-PEAK_HOLD_RATIO = 0.97               # entry only within 3% of the tape peak
-STOP_LOSS_RATIO = 0.92               # -8% under filled cost basis
+DIP_TOP_RATIO = 0.88                 # entry only after a >=12% pullback off the peak
+DIP_FLOOR_RATIO = 0.70               # ... but not after a >30% collapse
+STOP_LOSS_RATIO = 0.88               # -12% under filled cost basis
 TRAIL_ARM_RATIO = 1.15               # trailing stop arms once +15%
 TRAIL_DROP_RATIO = 0.92              # exit at -8% off the peak
 
@@ -197,10 +198,10 @@ def _decide_buys(state, batch, orders):
         price = _price(state, mint)
         if price is None or price < first_price * MOMENTUM_RATIO:
             continue  # momentum has not confirmed yet
-        if peak_price is not None and price < peak_price * PEAK_HOLD_RATIO:
-            continue  # already rolling over from its peak: likely dead
-        if streak < MIN_RISE_STREAK:
-            continue  # must still be climbing trade by trade, not just up overall
+        if peak_price is None or price > peak_price * DIP_TOP_RATIO:
+            continue  # no pullback yet: wait for the dip
+        if price < peak_price * DIP_FLOOR_RATIO:
+            continue  # dipped too far: likely dead, not a pullback
         curve = state.curves.get(mint)
         if curve is None or curve.complete:
             continue
