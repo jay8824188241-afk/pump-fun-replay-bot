@@ -52,11 +52,11 @@ MIN_TRADES = 10                      # trades seen before a coin may be bought
 MIN_BUY_FLOW_LAMPORTS = 1000000000   # 1.00 SOL of buy flow before entry
 MOMENTUM_RATIO = 1.15                # price must be +15% over its first trade
 MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
-MAX_HOLD_SLOTS = 9000                # flat any position older than ~1 hour
+MAX_HOLD_SLOTS = 6000                # flat any position older than ~40 min
 
 TAKE_PROFIT_RATIO = 1.50             # +50% over filled cost basis
 PEAK_HOLD_RATIO = 0.97               # entry only within 3% of the tape peak
-STOP_LOSS_RATIO = 0.90               # -10% under filled cost basis
+STOP_LOSS_RATIO = 0.92               # -8% under filled cost basis
 TRAIL_ARM_RATIO = 1.15               # trailing stop arms once +15%
 TRAIL_DROP_RATIO = 0.92              # exit at -8% off the peak
 
