@@ -44,20 +44,20 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ven
 import makefun_bot  # noqa: E402  (after the sys.path line: -P leaves the script directory off sys.path)
 
 # --- fixed strategy constants (all in lamports / slots / ratios) -------------
-STAKE_LAMPORTS = 40_000_000          # 0.04 SOL per coin
+STAKE_LAMPORTS = 20_000_000          # 0.02 SOL per coin
 MIN_BUY_LAMPORTS = 10_000_000        # 0.01 SOL: the competition's round-trip bar
 MAX_SLIPPAGE_BPS = 500               # 5% worst-case fill slippage
 
-MIN_TRADES = 6                       # trades seen before a coin may be bought
-MIN_BUY_FLOW_LAMPORTS = 500_000_000  # 0.50 SOL of buy flow before entry
-MOMENTUM_RATIO = 1.10                # price must be +10% over its first trade
-MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
-MAX_HOLD_SLOTS = 9000                # flat any position older than ~1 hour
+MIN_TRADES = 1                       # trades seen before a coin may be bought
+MIN_BUY_FLOW_LAMPORTS = 100_000_000  # 0.10 SOL of buy flow before entry
+MOMENTUM_RATIO = 1.00                # no run-up required: buy the first trade
+MAX_AGE_SLOTS = 600                  # only coins created within the last ~4 min
+MAX_HOLD_SLOTS = 3600                # flat any position older than ~24 min
 
-TAKE_PROFIT_RATIO = 1.30             # +30% over filled cost basis
-STOP_LOSS_RATIO = 0.88               # -12% under filled cost basis
-TRAIL_ARM_RATIO = 1.05               # trailing stop arms once +5%
-TRAIL_DROP_RATIO = 0.90              # exit at -10% off the peak
+TAKE_PROFIT_RATIO = 1.60             # +60% over filled cost basis
+STOP_LOSS_RATIO = 0.80               # -20% under filled cost basis
+TRAIL_ARM_RATIO = 1.20               # trailing stop arms once +20%
+TRAIL_DROP_RATIO = 0.85              # exit at -15% off the peak
 
 # --- per-mint tape, in first-seen order (insertion order is deterministic) ---
 # mint -> [first_price, trades, buy_sol, sell_sol, created_slot]
