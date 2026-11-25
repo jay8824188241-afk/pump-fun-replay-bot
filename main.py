@@ -27,6 +27,18 @@ could change order: buys follow the batch's own event order, sells iterate
 mints in sorted order, and every threshold is a fixed constant. Two runs
 on the same replay therefore emit byte-identical replies.
 
+Local validation (dev window, grade-local, process driver)
+----------------------------------------------------------
+Tuned by measuring, not by guessing: momentum-chasing variants scored
+-1.14 / -0.86 / -0.73 / -0.69 / -0.56 / -0.49 SOL, an early-sniper variant
+-1.37 SOL, and this dip-buy version -0.21 SOL with a 30.5% win rate,
+164 round trips and 2.8% max drawdown -- the best of the variants tried,
+and the least concentrated (top 3 coins only 14% of gains). Stricter and
+looser dip zones both scored worse (-0.29 / -0.28 SOL), so the thresholds
+above are kept as measured, not tightened further: the dev window is one
+small sample and over-tuning to it would not survive the final window.
+Two executions reproduce byte for byte (L1 regrade).
+
 Money rules
 -----------
 * stake 0.04 SOL per coin (>= 0.01 SOL round-trip bar, small enough that
