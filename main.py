@@ -54,13 +54,14 @@ MOMENTUM_RATIO = 1.15                # price must be +15% over its first trade
 MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
 MAX_HOLD_SLOTS = 9000                # flat any position older than ~1 hour
 
-TAKE_PROFIT_RATIO = 1.40             # +40% over filled cost basis
+TAKE_PROFIT_RATIO = 1.50             # +50% over filled cost basis
+PEAK_HOLD_RATIO = 0.97               # entry only within 3% of the tape peak
 STOP_LOSS_RATIO = 0.90               # -10% under filled cost basis
 TRAIL_ARM_RATIO = 1.15               # trailing stop arms once +15%
 TRAIL_DROP_RATIO = 0.92              # exit at -8% off the peak
 
 # --- per-mint tape, in first-seen order (insertion order is deterministic) ---
-# mint -> [first_price, trades, buy_sol, sell_sol, created_slot]
+# mint -> [first_price, trades, buy_sol, sell_sol, created_slot, peak_price]
 _tape = {}
 # mints already bought once (never re-entered) and mints already exited
 _bought = set()
@@ -89,17 +90,20 @@ def _update_tape(batch):
         mint = event["mint"]
         if kind == "CreateEvent":
             if mint not in _tape:
-                _tape[mint] = [None, 0, 0, 0, event["slot"]]
+                _tape[mint] = [None, 0, 0, 0, event["slot"], None]
         elif kind == "TradeEvent":
             row = _tape.get(mint)
             if row is None:
-                row = [None, 0, 0, 0, event["slot"]]
+                row = [None, 0, 0, 0, event["slot"], None]
                 _tape[mint] = row
-            if row[0] is None:
-                vt = int(event["virtual_token_reserves"])
-                vq = int(event["virtual_quote_reserves"])
-                if vt > 0 and vq > 0:
-                    row[0] = vq / vt
+            vt = int(event["virtual_token_reserves"])
+            vq = int(event["virtual_quote_reserves"])
+            if vt > 0 and vq > 0:
+                px = vq / vt
+                if row[0] is None:
+                    row[0] = px
+                if row[5] is None or px > row[5]:
+                    row[5] = px
             row[1] += 1
             if event["is_buy"]:
                 row[2] += int(event["sol_amount"])
@@ -174,7 +178,7 @@ def _decide_buys(state, batch, orders):
         row = _tape.get(mint)
         if row is None:
             continue
-        first_price, trades, buy_sol, sell_sol, created_slot = row
+        first_price, trades, buy_sol, sell_sol, created_slot, peak_price = row
         if first_price is None:
             continue
         if state.slot - created_slot > MAX_AGE_SLOTS:
@@ -186,6 +190,8 @@ def _decide_buys(state, batch, orders):
         price = _price(state, mint)
         if price is None or price < first_price * MOMENTUM_RATIO:
             continue  # momentum has not confirmed yet
+        if peak_price is not None and price < peak_price * PEAK_HOLD_RATIO:
+            continue  # already rolling over from its peak: likely dead
         curve = state.curves.get(mint)
         if curve is None or curve.complete:
             continue
