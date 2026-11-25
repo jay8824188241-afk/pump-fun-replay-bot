@@ -54,14 +54,16 @@ MOMENTUM_RATIO = 1.15                # price must be +15% over its first trade
 MAX_AGE_SLOTS = 3600                 # only coins created within the last ~24 min
 MAX_HOLD_SLOTS = 6000                # flat any position older than ~40 min
 
-TAKE_PROFIT_RATIO = 1.50             # +50% over filled cost basis
+TAKE_PROFIT_RATIO = 1.60             # +60% over filled cost basis
+MIN_RISE_STREAK = 3                  # consecutive rising trade prints at entry
 PEAK_HOLD_RATIO = 0.97               # entry only within 3% of the tape peak
 STOP_LOSS_RATIO = 0.92               # -8% under filled cost basis
 TRAIL_ARM_RATIO = 1.15               # trailing stop arms once +15%
 TRAIL_DROP_RATIO = 0.92              # exit at -8% off the peak
 
 # --- per-mint tape, in first-seen order (insertion order is deterministic) ---
-# mint -> [first_price, trades, buy_sol, sell_sol, created_slot, peak_price]
+# mint -> [first_price, trades, buy_sol, sell_sol, created_slot, peak_price,
+#          last_price, rise_streak]
 _tape = {}
 # mints already bought once (never re-entered) and mints already exited
 _bought = set()
@@ -90,11 +92,11 @@ def _update_tape(batch):
         mint = event["mint"]
         if kind == "CreateEvent":
             if mint not in _tape:
-                _tape[mint] = [None, 0, 0, 0, event["slot"], None]
+                _tape[mint] = [None, 0, 0, 0, event["slot"], None, None, 0]
         elif kind == "TradeEvent":
             row = _tape.get(mint)
             if row is None:
-                row = [None, 0, 0, 0, event["slot"], None]
+                row = [None, 0, 0, 0, event["slot"], None, None, 0]
                 _tape[mint] = row
             vt = int(event["virtual_token_reserves"])
             vq = int(event["virtual_quote_reserves"])
@@ -104,6 +106,9 @@ def _update_tape(batch):
                     row[0] = px
                 if row[5] is None or px > row[5]:
                     row[5] = px
+                if row[6] is not None:
+                    row[7] = row[7] + 1 if px > row[6] else 0
+                row[6] = px
             row[1] += 1
             if event["is_buy"]:
                 row[2] += int(event["sol_amount"])
@@ -168,6 +173,8 @@ def _decide_buys(state, batch, orders):
     for event in batch["events"]:
         if event["event"] != "TradeEvent":
             continue
+        if not event["is_buy"]:
+            continue  # enter only on buying pressure, never on a sell print
         if len(orders) >= caps["max_orders_per_batch"]:
             break
         mint = event["mint"]
@@ -178,7 +185,7 @@ def _decide_buys(state, batch, orders):
         row = _tape.get(mint)
         if row is None:
             continue
-        first_price, trades, buy_sol, sell_sol, created_slot, peak_price = row
+        first_price, trades, buy_sol, sell_sol, created_slot, peak_price, _last, streak = row
         if first_price is None:
             continue
         if state.slot - created_slot > MAX_AGE_SLOTS:
@@ -192,6 +199,8 @@ def _decide_buys(state, batch, orders):
             continue  # momentum has not confirmed yet
         if peak_price is not None and price < peak_price * PEAK_HOLD_RATIO:
             continue  # already rolling over from its peak: likely dead
+        if streak < MIN_RISE_STREAK:
+            continue  # must still be climbing trade by trade, not just up overall
         curve = state.curves.get(mint)
         if curve is None or curve.complete:
             continue
